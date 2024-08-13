@@ -6,38 +6,36 @@ async function search() {
   }
   userStore.$state.currentPage = 1
 
-  const filterDataKeys = Object.keys(filterData.value)
-  filterDataKeys.forEach(filterKey => {
-    if (nullCheck(filterData.value[filterKey])) {
-      dateTitles.value.forEach(date => {
-        if (date === filterKey) {
-          filterData.value[filterKey] = new Date(filterData.value[filterKey]).toISOString()
+  try {
+    const queryParams = {}
+
+    Object.keys(filterData.value).forEach(key => {
+      if (nullCheck(filterData.value[key])) {
+        if (dateTitles.value.includes(key)) {
+          filterData.value[key] = new Date(filterData.value[key]).toISOString()
         }
+        data[key] = filterData.value[key]
+        if (key !== 'page' && key !== 'limit') {
+          queryParams[key] = filterData.value[key]
+        }
+      }
+    })
+
+    let searchRes = await userStore.getAllUsers(data)
+    if (searchRes) {
+      userStore.$state.isFiltered = true
+      userStore.$state.filterData = data
+      router.push({
+        query: {
+          ...router.currentRoute.value.query,
+          ...queryParams,
+        },
       })
-      data[filterKey] = filterData.value[filterKey]
+      close()
+    } else {
+      globalState.notification('Uygun kullanıcı bulunamadı.', 'error', 3000, true)
     }
-  })
-  const queryParams = {}
-
-  filterDataKeys.forEach(key => {
-    if (key !== 'page' && key !== 'limit') {
-      queryParams[key] = filterData.value[key]
-    }
-  })
-
-  router.push({
-    query: {
-      ...router.currentRoute.value.query,
-      ...queryParams,
-    },
-  })
-
-  let searchRes = await userStore.getAllUsers(data)
-  if (searchRes) {
-    ;(userStore.$state.isFiltered = true), (userStore.$state.filterData = data)
-    close()
-  } else {
-    globalState.notification('Uygun kullanıcı bulunamadı.', 'error', 3000, true)
+  } finally {
+    searchLoading.value = false
   }
-  searchLoading.value = false
 }
